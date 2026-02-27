@@ -1,38 +1,45 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*' # Se dispara cuando creas un tag como v0.1.0
+  release:
+    types: [created]
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            artifact_name: rsname
-            asset_name: rsname-linux-x86_64
-          - os: windows-latest
-            artifact_name: rsname.exe
-            asset_name: rsname-windows-x86_64.exe
-
+  build-linux:
+    name: Build Linux Binary
+    runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Build Release
-        run: cargo build --release
-
-      - name: Upload binaries to Release
-        uses: svenstaro/upload-release-action@v2
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          tag: ${{ github.ref }}
+          toolchain: stable
+      
+      - name: Build release binary
+        run: cargo build --release --verbose
+      
+      - name: Rename binary
+        run: |
+          cd target/release
+          mv rsname rsname-linux-x86_64
+      
+      - name: Generate SHA256 checksum
+        run: |
+          cd target/release
+          sha256sum rsname-linux-x86_64 > rsname-linux-x86_64.sha256
+      
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            target/release/rsname-linux-x86_64
+            target/release/rsname-linux-x86_64.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
