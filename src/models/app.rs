@@ -25,6 +25,36 @@ impl App {
         app
     }
 
+    fn is_video_file(filename: &str) -> bool {
+        if let Some(extension) = filename.rfind('.').map(|i| &filename[i + 1..]) {
+            matches!(
+                extension.to_lowercase().as_str(),
+                "mkv"
+                    | "avi"
+                    | "mp4"
+                    | "mov"
+                    | "wmv"
+                    | "flv"
+                    | "webm"
+                    | "m4v"
+                    | "mpg"
+                    | "mpeg"
+                    | "3gp"
+                    | "rmvb"
+                    | "ts"
+                    | "mts"
+                    | "m2ts"
+                    | "vob"
+                    | "ogv"
+                    | "dv"
+                    | "divx"
+                    | "asf"
+            )
+        } else {
+            false
+        }
+    }
+
     pub fn confirm_rename(&mut self) {
         if self.items.iter().any(|i| i.selected) {
             self.mode = AppMode::Confirming;
@@ -47,11 +77,12 @@ impl App {
                 let filename = entry.file_name().to_string_lossy().to_string();
                 let cleaned = self.cleaner.clean(&filename);
                 if filename != cleaned {
+                    let is_video = Self::is_video_file(&filename);
                     new_items.push(RenameItem {
                         path: entry.path().to_path_buf(),
                         old_name: filename,
                         new_name: cleaned,
-                        selected: true,
+                        selected: is_video,
                     });
                 }
             }
@@ -92,5 +123,30 @@ impl App {
         if let Some(item) = self.items.get_mut(self.selected_index) {
             item.selected = !item.selected;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_video_file() {
+        // Archivos de video deben retornar true
+        assert!(App::is_video_file("movie.mkv"));
+        assert!(App::is_video_file("video.avi"));
+        assert!(App::is_video_file("film.mp4"));
+        assert!(App::is_video_file("show.MOV")); // mayúsculas
+        assert!(App::is_video_file("series.flv"));
+        assert!(App::is_video_file("episode.webm"));
+        assert!(App::is_video_file("clip.wmv"));
+
+        // Archivos que no son video deben retornar false
+        assert!(!App::is_video_file("audio.mp3"));
+        assert!(!App::is_video_file("document.pdf"));
+        assert!(!App::is_video_file("image.jpg"));
+        assert!(!App::is_video_file("text.txt"));
+        assert!(!App::is_video_file("archivo_sin_extension"));
+        assert!(!App::is_video_file("subtitle.srt"));
     }
 }
