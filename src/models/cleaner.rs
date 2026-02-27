@@ -69,6 +69,10 @@ impl NameCleaner {
         // Limpiar basura técnica restante
         name_part = self.re_garbage.replace_all(&name_part, " ").into_owned();
 
+        // Eliminar patrones como "Temporada X", "- Temporada X", "Season X", etc.
+        let re_season_text = Regex::new(r"(?i)\s*-?\s*(?:temporada|season)\s+\d+\s*").unwrap();
+        name_part = re_season_text.replace_all(&name_part, " ").into_owned();
+
         // Si quitamos el año del título pero lo queremos al final, nos aseguramos de borrarlo aquí
         if !year_info.is_empty() {
             name_part = name_part.replace(&year_info.replace("(", "").replace(")", ""), " ");
@@ -182,7 +186,7 @@ mod tests {
             "Succession - S02E01.mkv"
         );
 
-        // 7. Caso: Anime con corchetes de grupo al principio y Cap. de 3 cifras
+        // 7. Caso: Anime con corchetes de grupo al principio y Cap. de 3+ cifras (1045 = S10E45)
         assert_eq!(
             cleaner.clean("[SubsCastellano] One Piece Cap 1045.mkv"),
             "One Piece - S10E45.mkv"
@@ -192,6 +196,31 @@ mod tests {
         assert_eq!(
             cleaner.clean("www.descargaslocas.com_Avatar.2.2022.English.x264.mkv"),
             "Www Descargaslocas Com Avatar 2 (2022).mkv"
+        );
+    }
+
+    #[test]
+    fn test_problematic_file() {
+        let cleaner = NameCleaner::new();
+
+        // Caso problemático reportado por el usuario - ahora debería funcionar correctamente
+        let result = cleaner.clean(
+            "El agente nocturno - Temporada 1 [HDTV][Cap.106][Casterllano][www.AtomoHD.PLUS].mkv",
+        );
+        assert_eq!(result, "El Agente Nocturno - S01E06.mkv");
+
+        // Otros casos de números de episodios largos
+        assert_eq!(cleaner.clean("Serie Cap.215.mkv"), "Serie - S02E15.mkv");
+        assert_eq!(cleaner.clean("Show Cap.150.mkv"), "Show - S01E50.mkv");
+
+        // Casos adicionales con "Temporada" o "Season" que deben ser eliminados
+        assert_eq!(
+            cleaner.clean("Breaking Bad - Season 5 - Cap.501.mkv"),
+            "Breaking Bad - S05E01.mkv"
+        );
+        assert_eq!(
+            cleaner.clean("Narcos Temporada 3 S03E08.mkv"),
+            "Narcos - S03E08.mkv"
         );
     }
 }
