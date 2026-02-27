@@ -8,6 +8,7 @@ pub struct App {
     pub selected_index: usize,
     pub cleaner: NameCleaner,
     pub mode: AppMode,
+    #[allow(dead_code)]
     pub should_quit: bool,
 }
 
